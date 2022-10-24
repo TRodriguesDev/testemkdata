@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2022/04/26 20:32:22.000.551,=D:\ProjetosMult\Unit1.pas</Transaction>
+    <Transaction>2022/05/04 19:27:36.000.869,=D:\ProjetosMult\Unit1.pas</Transaction>
+    <Transaction>2022/10/20 00:07:28.000.219,=D:\ProjetosMult\Unit1.pas</Transaction>
+    <Transaction>2022/10/20 03:39:24.000.895,=D:\ProjetosMult\Unit1.pas</Transaction>
+    <Transaction>2022/10/20 17:15:07.000.132,=D:\ProjetosMult\Unit1.pas</Transaction>
+    <Transaction>2022/10/20 17:17:40.000.888,D:\ProjetosMult\Unit1.pas=D:\MKDATA\fontes\UPrincipal.pas</Transaction>
+    <Transaction>2022/10/20 17:17:40.000.888,D:\ProjetosMult\Unit1.dfm=D:\MKDATA\fontes\UPrincipal.dfm</Transaction>
+    <Transaction>2022/10/20 17:18:04.000.988,D:\ProjetosMult\Project1.dproj=D:\MKDATA\fontes\PMkdata.dproj</Transaction>
+    <Transaction>2022/10/20 17:21:04.000.391,=D:\MKDATA\fontes\Unit1.pas</Transaction>
+    <Transaction>2022/10/20 17:21:25.000.465,=D:\MKDATA\fontes\Unit1.pas</Transaction>
+    <Transaction>2022/10/20 17:22:06.000.034,D:\MKDATA\fontes\UDmlCad.pas=D:\MKDATA\fontes\Unit1.pas</Transaction>
+    <Transaction>2022/10/20 17:22:06.000.034,D:\MKDATA\fontes\UDmlCad.dfm=D:\MKDATA\fontes\Unit1.dfm</Transaction>
+  </Transactions>
+	<ActiveMobileDevice>
+		<NoProfile iOSSimulator="iPhone5"/>
+	</ActiveMobileDevice>
+</BorlandProject>
