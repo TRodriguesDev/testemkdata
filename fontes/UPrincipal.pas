@@ -5,10 +5,13 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.ComCtrls, Data.DB,
-  Vcl.StdCtrls, Vcl.Mask, Vcl.DBCtrls, REST.Types, REST.Client,
+  Vcl.StdCtrls, Vcl.Mask, Vcl.DBCtrls, System.StrUtils, REST.Types, REST.Client,
   Data.Bind.Components, Data.Bind.ObjectScope, System.JSON, Vcl.Grids,
   Vcl.DBGrids, Vcl.Buttons, ACBrConsultaCNPJ, ACBrBase, ACBrSocket,
-  ACBrConsultaCPF, ACBrValidador;
+  ACBrConsultaCPF, ACBrValidador, FireDAC.Stan.Intf, FireDAC.Stan.Option,
+  FireDAC.Stan.Param, FireDAC.Stan.Error, FireDAC.DatS, FireDAC.Phys.Intf,
+  FireDAC.DApt.Intf, FireDAC.Stan.Async, FireDAC.DApt, FireDAC.Comp.DataSet,
+  FireDAC.Comp.Client;
 
 type
   TFrmPrincipal = class(TForm)
@@ -19,7 +22,7 @@ type
     pnlTopo: TPanel;
     pnlRodape: TPanel;
     TabPesqCli: TTabSheet;
-    Cadastro: TTabSheet;
+    TabCadCli: TTabSheet;
     pCtrlDets: TPageControl;
     tabContatos: TTabSheet;
     Endereços: TTabSheet;
@@ -76,10 +79,10 @@ type
     Label25: TLabel;
     edtBairro: TDBEdit;
     DBNavigator1: TDBNavigator;
-    DBNavigator2: TDBNavigator;
-    DBNavigator3: TDBNavigator;
+    DBNavCli: TDBNavigator;
+    DBNavCto: TDBNavigator;
     DBNavigator4: TDBNavigator;
-    DBNavigator5: TDBNavigator;
+    DBNavEnd: TDBNavigator;
     DBNavigator6: TDBNavigator;
     Label26: TLabel;
     DBEdit25: TDBEdit;
@@ -94,19 +97,29 @@ type
     RgPesq: TRadioGroup;
     Label27: TLabel;
     Label28: TLabel;
-    SpeedButton1: TSpeedButton;
+    btnPesq: TSpeedButton;
     ACBrValidador: TACBrValidador;
+    Label29: TLabel;
+    DBEdit4: TDBEdit;
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure verificardoctos(tp:integer;valor:string;Inserindo:Boolean);
     procedure edtCpfCnpfExit(Sender: TObject);
     procedure edtRgIEExit(Sender: TObject);
     procedure edtCEPExit(Sender: TObject);
-    procedure SpeedButton1Click(Sender: TObject);
+    procedure btnPesqClick(Sender: TObject);
     procedure edtCpfCnpfKeyPress(Sender: TObject; var Key: Char);
     procedure DBCTipoExit(Sender: TObject);
     procedure DBGPesqDblClick(Sender: TObject);
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure DBNavCliClick(Sender: TObject; Button: TNavigateBtn);
+    procedure edtPesqDoctoExit(Sender: TObject);
+    procedure pCtrlCadChange(Sender: TObject);
+    procedure pctrlModulosChange(Sender: TObject);
+
   private
+    procedure iniClientes(Pesq : TFDQuery);
+
     { Private declarations }
   public
     { Public declarations }
@@ -114,12 +127,69 @@ type
 
 var
   FrmPrincipal: TFrmPrincipal;
+  function validardocto(docto, Tp : string; validador : TACBrValidador) : boolean;
+
 
 implementation
 
-Uses UDmlCad, FireDAC.Comp.Client;
+Uses UDmlCad;
 
 {$R *.dfm}
+
+function validardocto(docto, Tp: string; validador : TACBrValidador) : boolean;
+Begin
+  Result := true;
+  if (tp = '1') and (length(trim(docto)) < 14) then
+  begin
+    messagebox(application.Handle,'CNPJ incompleto, por favor, preencha corretamente!','CLIENTES',mb_ok+MB_ICONINFORMATION+MB_SYSTEMMODAL);
+    result := False;
+  end;
+
+  Validador.Documento := Trim(docto);
+  if tp = '0' then
+    Validador.TipoDocto := docCPF
+  else
+    Validador.TipoDocto := docCNPJ;
+
+  if Validador.Validar then
+  else begin
+    messagebox(application.Handle,'O Número do documento esta incorreto, por favor, preencha corretamente!','CLIENTES',mb_ok+MB_ICONINFORMATION+MB_SYSTEMMODAL);
+    Result := False;
+  end;
+end;
+
+procedure TFrmPrincipal.iniClientes(Pesq : TFDQuery);
+begin
+  With Pesq do
+  Begin
+    Active := false;
+    Sql.Clear;
+    Sql.Add('SELECT C.*, CONTATOS, ENDERECOS FROM CAD_CLIENTES C');
+    Sql.Add('LEFT OUTER JOIN');
+    Sql.Add('(SELECT ID_CLIENTE, COUNT(ID_CLIENTE) CONTATOS FROM CAD_CONTATOS');
+    Sql.Add('GROUP BY ID_CLIENTE) TCONT ON C.IDCLIENTE = TCONT.ID_CLIENTE');
+    Sql.add('LEFT OUTER JOIN');
+    Sql.Add('(SELECT ID_CLIENTE, COUNT(ID_CLIENTE) ENDERECOS FROM CAD_ENDERECOS');
+    Sql.Add('GROUP BY ID_CLIENTE) TEND ON C.IDCLIENTE = TEND.ID_CLIENTE');
+  End;
+end;
+
+
+procedure TFrmPrincipal.pCtrlCadChange(Sender: TObject);
+begin
+  if TabClientes.Showing = true then
+    pCtrlDets.TabIndex := 0;
+end;
+
+procedure TFrmPrincipal.pctrlModulosChange(Sender: TObject);
+begin
+  if TabClientes.Showing = true then
+  Begin
+    pCtrlCad.TabIndex   := 0;
+    pCtrlDets.TabIndex  := 0;
+  End;
+
+end;
 
 procedure TFrmPrincipal.verificardoctos(tp:integer;valor:string;Inserindo:Boolean);
 Var
@@ -128,9 +198,9 @@ Var
   vStatus : Integer;
 begin
   if tp = 0 then
-    vDocto := 'RG/IE'
+    vDocto := 'CPF/CNPJ'
   else
-    vDocto := 'CPF/CNPJ';
+    vDocto := 'RG/IE';
 
   if Inserindo = true then
     vStatus := 0
@@ -157,14 +227,15 @@ begin
       Begin
         Close;
         Sql.Clear;
-        Sql.Add('SELECT * FROM CAD_CLIENTES');
+        //Sql.Add('SELECT * FROM CAD_CLIENTES C');
+        iniClientes(DmlCad.FDQClientes);
         Sql.Add('WHERE IDCLIENTE = ' + inttostr(Pesq.FieldByName('IDCLIENTE').AsInteger));
         Open;
       End;
     end;
   end;
 
-  Pesq.Free;
+  Pesq.DisposeOf;
 end;
 
 procedure TFrmPrincipal.DBCTipoExit(Sender: TObject);
@@ -180,11 +251,51 @@ begin
   pCtrlCad.TabIndex := 1;
 end;
 
+procedure TFrmPrincipal.DBNavCliClick(Sender: TObject;
+  Button: TNavigateBtn);
+var
+  vIdUlt : Integer;
+  Pesq : TFDQuery;
+  vInsc : Boolean;
+begin
+  vInsc := DmlCad.FDQClientes.State in [dsInsert];
+  if Button = nbPost then
+  begin
+    //vIdUlt := 0;
+    if ((length(trim(edtCpfCnpf.Text)) > 10) and (Length(trim(edtNome.Text)) > 3) and (Length(Trim(edtRgIE.Text)) > 3)) then
+    else begin
+      MessageBox(application.Handle,'Preencha todos os campos!','CLIENTES',mb_ok+MB_ICONINFORMATION+MB_SYSTEMMODAL);
+      abort;
+    end;
+
+    {
+    Pesq := TFDQuery.Create(Nil);
+    Pesq.Connection := DmlCad.FDCon;
+    Pesq.sql.Clear;
+    Pesq.sql.Add('SELECT GEN_ID(GEN_IDCLIENTES,0) ULT FROM CAD_CLIENTES');
+    Pesq.Active := True;
+
+    vIdUlt := Pesq.FieldByName('ULT').AsInteger + 1; }
+
+    DmlCad.FDQClientes.Refresh;
+
+    if vInsc = true then
+    begin
+      iniClientes(DmlCad.FDQClientes);
+      DmlCad.FDQClientes.Active := True;
+      DmlCad.FDQClientes.Last;
+    end;
+    //DmlCad.FDQClientes.Locate('IDCLIENTE',vIdUlt,[]);
+
+  end;
+end;
+
 procedure TFrmPrincipal.edtCEPExit(Sender: TObject);
 
 function consultaCEP : Boolean;
 var
   json : string;
+  vjsonPair : TJSONPair;
   jsonObj: TJsonObject;
   erro : String;
 begin
@@ -208,19 +319,12 @@ begin
       json := RESTRequest.Response.JSONValue.ToString;
       jsonObj := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(json),0) as TJSONObject;
 
-      //if jsonObj('erro') is null then
-      //Begin
+      DmlCad.FDQEnderecos.FieldByName('END_END').AsString := jsonObj.GetValue('logradouro').value;
+      DmlCad.FDQEnderecos.FieldByName('BAI_END').AsString := jsonObj.GetValue('bairro').value;
+      DmlCad.FDQEnderecos.FieldByName('CID_END').AsString := jsonObj.GetValue('localidade').value;
+      DmlCad.FDQEnderecos.FieldByName('UF_END').AsString  := jsonObj.GetValue('uf').value;
+      Result := True;
 
-        edtEnd.Text     := jsonObj.GetValue('logradouro').value;
-        edtBairro.Text  := jsonObj.GetValue('bairro').value;
-        edtCidade.Text  := jsonObj.GetValue('localidade').value;
-        edtUF.Text      := jsonObj.GetValue('uf').value;
-        Result          := True;
-      //End
-      //else begin
-        //Result := False;
-        //erro   := jsonObj.GetValue('retorno').value;
-      //end;
       jsonObj.DisposeOf;
     end;
 
@@ -247,24 +351,8 @@ end;
 
 procedure TFrmPrincipal.edtCpfCnpfExit(Sender: TObject);
 begin
-  //Verifica se é cpf ou cnpj
-  if (DBCTipo.ItemIndex = 1) and (length(trim(edtCpfCnpf.Text)) < 14) then
-  begin
-    messagebox(application.Handle,'CNPJ incompleto, por favor, preencha corretamente!','CLIENTES',mb_ok+MB_ICONINFORMATION+MB_SYSTEMMODAL);
+  if validardocto(Trim(edtCpfCnpf.Text), ifthen(DmlCad.FDQClientesTIPO_CLI.asstring='F','0','1'), ACBrValidador) = False then
     edtCpfCnpf.SetFocus;
-  end;
-
-  ACBrValidador.Documento := Trim(edtCpfCnpf.Text);
-  if DBCTipo.ItemIndex = 0 then
-    ACBrValidador.TipoDocto := docCPF
-  else
-    ACBrValidador.TipoDocto := docCNPJ;
-
-  if ACBrValidador.Validar then
-  else begin
-    messagebox(application.Handle,'O Número do documento esta incorreto, por favor, preencha corretamente!','CLIENTES',mb_ok+MB_ICONINFORMATION+MB_SYSTEMMODAL);
-    edtCpfCnpf.SetFocus;
-  end;
 
   //Verifica se ja existe documento cadastrado
   verificardoctos(0,edtCpfCnpf.Text,DmlCad.FDQClientes.State in [dsInsert]);
@@ -272,12 +360,20 @@ end;
 
 procedure TFrmPrincipal.edtCpfCnpfKeyPress(Sender: TObject; var Key: Char);
 begin
-  if (key in ['0'..'9'] = false) and (key <> char(8)) then
+  if (key in ['0'..'9'] = false) and (key <> char(8))  then
     key := #0;
+end;
+
+procedure TFrmPrincipal.edtPesqDoctoExit(Sender: TObject);
+begin
+  if Trim(edtPesqDocto.Text) <> '' then
+    if validardocto(Trim(edtPesqDocto.Text), Ifthen(Length(Trim(edtPesqDocto.Text)) > 11,'1','0'), ACBrValidador) = False then
+      edtPesqDocto.SetFocus;
 end;
 
 procedure TFrmPrincipal.edtRgIEExit(Sender: TObject);
 begin
+
   verificardoctos(1,edtRgIE.Text,DmlCad.FDQClientes.State in [dsInsert]);
 end;
 
@@ -288,12 +384,18 @@ begin
   DmlCad.FDQClientes.Active   := False;
 end;
 
+procedure TFrmPrincipal.FormKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if TabPesqCli.Showing = true then
+    if Key = vk_f3 then
+      btnPesq.Click;
+end;
+
 procedure TFrmPrincipal.FormShow(Sender: TObject);
 begin
-
-  DmlCad.FDQClientes.Active     := False;
-  DmlCad.FDQClientes.sql.Clear;
-  DmlCad.FDQClientes.sql.add('SELECT * FROM CAD_CLIENTES WHERE 0 = -1');
+  iniClientes(DmlCad.FDQClientes);
+  DmlCad.FDQClientes.sql.Add('WHERE 0 = -1');
   DmlCad.FDQClientes.Active     := True;
 
   DmlCad.FDQContatos.Active     := True;
@@ -302,17 +404,13 @@ begin
   pCtrlCad.ActivePageIndex      := 0;
 end;
 
-procedure TFrmPrincipal.SpeedButton1Click(Sender: TObject);
+procedure TFrmPrincipal.btnPesqClick(Sender: TObject);
 begin
   Try
     With DmlCad.FDQClientes do
     Begin
-      Close;
-      Sql.Clear;
-      Sql.Add('SELECT * FROM CAD_CLIENTES');
+      iniClientes(DmlCad.FDQClientes);
       Sql.Add('WHERE 0 = 0');
-
-
       if TRIM(edtPesqDocto.Text) <> '' then
         Sql.Add('AND CPFCNPJ_CLI = ' + QuotedStr(edtPesqDocto.Text));
       if TRIM(edtPesqNome.Text) <> '' then
@@ -328,6 +426,8 @@ begin
       Sql.Add('ORDER BY NOME_CLI');
       Open;
     End;
+
+    stBarPesq.Panels[0].Text :=  ' Não encontrei clientes';
 
     If Dmlcad.FDQClientes.RecordCount = 0 then
       MessageBox(application.Handle,'Desculpa, não encontrei registros para o filtro informado!','CLIENTES',MB_OK+MB_ICONINFORMATION+MB_SYSTEMMODAL)

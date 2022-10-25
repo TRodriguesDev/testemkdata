@@ -46,13 +46,22 @@ type
     FDQEnderecosUF_END: TStringField;
     FDQEnderecosCEP_END: TStringField;
     FDQEnderecosEND_END: TStringField;
-    FDQEnderecosCOMPL_END: TStringField;
     FDQEnderecosCID_END: TStringField;
     FDQEnderecosBAI_END: TStringField;
     FDQEnderecosLOGRA_END: TStringField;
     FDQEnderecosDTUALT_END: TSQLTimeStampField;
     FDQClientesNOME_CLI: TStringField;
+    FDQEnderecosCOMPL_END: TStringField;
+    FDQEnderecosNUM_END: TStringField;
+    FDQClientesCONTATOS: TIntegerField;
+    FDQClientesENDERECOS: TIntegerField;
     procedure DataModuleCreate(Sender: TObject);
+    procedure FDQClientesNewRecord(DataSet: TDataSet);
+    procedure FDQEnderecosNewRecord(DataSet: TDataSet);
+    procedure FDQContatosAfterPost(DataSet: TDataSet);
+    procedure FDQEnderecosAfterPost(DataSet: TDataSet);
+    procedure travafilhos;
+    procedure FDQClientesAfterCancel(DataSet: TDataSet);
   private
     { Private declarations }
   public
@@ -71,6 +80,19 @@ uses
 
 {$R *.dfm}
 
+procedure TDmlCad.travafilhos;
+begin
+  if (FDQClientes.State in [dsInsert,dsEdit]) or (FDQClientes.RecordCount <= 0)  then
+  begin
+    FDQContatos.Active  := False;
+    FDQEnderecos.Active := False;
+  end
+  else begin
+    FDQContatos.Active  := True;
+    FDQEnderecos.Active := True;
+  end;
+end;
+
 procedure TDmlCad.DataModuleCreate(Sender: TObject);
 Var
   Ini : TIniFile;
@@ -87,6 +109,32 @@ begin
     Showmessage('Erro Banco:' + e.message);
 
   End;
+end;
+
+procedure TDmlCad.FDQClientesAfterCancel(DataSet: TDataSet);
+begin
+  travafilhos;
+end;
+
+procedure TDmlCad.FDQClientesNewRecord(DataSet: TDataSet);
+begin
+  FDQClientes.FieldByName('IDCLIENTE').AsInteger := 0;
+  FDQClientes.FieldByName('ATIVO_CLI').ASSTRING := 'N';
+end;
+
+procedure TDmlCad.FDQContatosAfterPost(DataSet: TDataSet);
+begin
+  FDQContatos.refresh;
+end;
+
+procedure TDmlCad.FDQEnderecosAfterPost(DataSet: TDataSet);
+begin
+  FDQEnderecos.refresh;
+end;
+
+procedure TDmlCad.FDQEnderecosNewRecord(DataSet: TDataSet);
+begin
+  FDQEnderecos.FieldByName('DEF_END').ASSTRING := 'N';
 end;
 
 end.

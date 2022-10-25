@@ -15,9 +15,26 @@ object DmlCad: TDmlCad
     Top = 24
   end
   object FDQClientes: TFDQuery
+    AfterOpen = FDQClientesAfterCancel
+    AfterInsert = FDQClientesAfterCancel
+    AfterEdit = FDQClientesAfterCancel
+    AfterPost = FDQClientesAfterCancel
+    AfterCancel = FDQClientesAfterCancel
+    AfterDelete = FDQClientesAfterCancel
+    OnNewRecord = FDQClientesNewRecord
     Connection = FDCon
     SQL.Strings = (
-      'SELECT * FROM CAD_CLIENTES')
+      'SELECT C.*, CONTATOS, ENDERECOS FROM CAD_CLIENTES C'
+      'LEFT OUTER JOIN'
+      '(SELECT ID_CLIENTE, COUNT(ID_CLIENTE) CONTATOS FROM CAD_CONTATOS'
+      'GROUP BY ID_CLIENTE) TCONT ON C.IDCLIENTE = TCONT.ID_CLIENTE'
+      'LEFT OUTER JOIN'
+      '('
+      
+        'SELECT ID_CLIENTE, COUNT(ID_CLIENTE) ENDERECOS FROM CAD_ENDERECO' +
+        'S'
+      'GROUP BY ID_CLIENTE) TEND ON C.IDCLIENTE = TEND.ID_CLIENTE'
+      'ORDER BY NOME_CLI')
     Left = 40
     Top = 88
     object FDQClientesIDCLIENTE: TIntegerField
@@ -69,6 +86,20 @@ object DmlCad: TDmlCad
       FieldName = 'DTUALT_CLI'
       Origin = 'DTUALT_CLI'
     end
+    object FDQClientesCONTATOS: TIntegerField
+      AutoGenerateValue = arDefault
+      FieldName = 'CONTATOS'
+      Origin = 'CONTATOS'
+      ProviderFlags = []
+      ReadOnly = True
+    end
+    object FDQClientesENDERECOS: TIntegerField
+      AutoGenerateValue = arDefault
+      FieldName = 'ENDERECOS'
+      Origin = 'ENDERECOS'
+      ProviderFlags = []
+      ReadOnly = True
+    end
   end
   object FDTransaction: TFDTransaction
     Connection = FDCon
@@ -86,6 +117,7 @@ object DmlCad: TDmlCad
     Top = 24
   end
   object FDQContatos: TFDQuery
+    AfterPost = FDQContatosAfterPost
     IndexFieldNames = 'ID_CLIENTE'
     MasterSource = DSClientes
     MasterFields = 'IDCLIENTE'
@@ -145,6 +177,9 @@ object DmlCad: TDmlCad
     end
   end
   object FDQEnderecos: TFDQuery
+    Active = True
+    AfterPost = FDQEnderecosAfterPost
+    OnNewRecord = FDQEnderecosNewRecord
     IndexFieldNames = 'ID_CLIENTE'
     MasterSource = DSClientes
     MasterFields = 'IDCLIENTE'
@@ -152,12 +187,12 @@ object DmlCad: TDmlCad
     Connection = FDCon
     SQL.Strings = (
       'SELECT * FROM CAD_ENDERECOS'
-      'WHERE ID_CLIENTE = :ID_CLIENTE')
+      'WHERE ID_CLIENTE = :IDCLIENTE')
     Left = 40
     Top = 208
     ParamData = <
       item
-        Name = 'ID_CLIENTE'
+        Name = 'IDCLIENTE'
         DataType = ftInteger
         ParamType = ptInput
         Value = Null
@@ -221,11 +256,15 @@ object DmlCad: TDmlCad
       Required = True
       Size = 60
     end
+    object FDQEnderecosNUM_END: TStringField
+      FieldName = 'NUM_END'
+      Origin = 'NUM_END'
+      Required = True
+      Size = 15
+    end
     object FDQEnderecosCOMPL_END: TStringField
-      DisplayLabel = 'Complemento'
       FieldName = 'COMPL_END'
       Origin = 'COMPL_END'
-      Required = True
       Size = 30
     end
     object FDQEnderecosCID_END: TStringField
